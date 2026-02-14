@@ -71,5 +71,5 @@ The study was implemented as a Qualtrics survey and analyzed in R. No statistica
 - Results do not establish that change or sustain talk has no effect—only that any effect may be small or context-dependent in this design
 
 ## Related Links
-- [Project page on my portfolio](https://breyonnajordan.com/projects/university-major/change-talk-experiment)
+- [View this Project on my Portofolio](https://breyonnajordan.github.io/projects/university-major/change-talk-experiment.html)
 
