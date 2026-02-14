@@ -8,7 +8,7 @@ The study was implemented as a Qualtrics survey and analyzed in R. No statistica
 
 ## Files
 /data
-  - [raw_data.csv](data/raw_data.csv) # personally identifiable information removed 
+  - [raw_data.csv](data/raw_data.csv) (personally identifiable information removed)
 
 /scripts
   - [01_script.Rmd](scripts/01_script.Rmd)
