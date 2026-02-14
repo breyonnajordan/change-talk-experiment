@@ -5,25 +5,21 @@ This repository contains the data, analysis code, and outputs for an experimenta
 
 The study was implemented as a Qualtrics survey and analyzed in R. No statistically significant effects were detected.
 
-Final artifacts (paper, poster, presentation) are included in /docs. 
 
 ## Files
 /data
-  raw_data.csv
-  cleaned_data.csv
+  - [raw_data.csv](data/raw_data.csv) # personally identifiable information removed 
 
 /scripts
-  01_cleaning.R
-  02_analysis.R
+  - [01_script.Rmd](scripts/01_script.Rmd)
 
-/output
-  figures/
-  tables/
+/outputs
+  - [change-talk-outputs.html](outputs/change-talk-outputs.html)
 
 /docs
-  paper.pdf
-  poster.pdf
-  presentation.pdf
+  - [paper](docs/change-talk-paper.pdf)
+  - [poster](docs/change-talk-poster.pdf)
+  - [presentation](docs/change-talk-presentation.pdf)
 
 ## Data
 - Survey responses collected from 120 Wesleyan University students
@@ -66,8 +62,8 @@ Final artifacts (paper, poster, presentation) are included in /docs.
 
 ## Results
 - No significant results were found. 
-- link to figures / tables
-- link to paper/poster
+- link to [output](outputs)
+- link to [paper](docs/change-talk-paper), [poster](docs/change-talk-poster)
 
 ## Limitations
 - No reading comprehension check was used; only an attention check at the end of the survey
@@ -75,4 +71,5 @@ Final artifacts (paper, poster, presentation) are included in /docs.
 - Results do not establish that change or sustain talk has no effect—only that any effect may be small or context-dependent in this design
 
 ## Related Links
-- portfolio page
+- [Project page on my portfolio](https://breyonnajordan.com/projects/university-major/change-talk-experiment)
+
