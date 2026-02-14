@@ -1,0 +1,403 @@
+---
+title: "307 Final"
+author: "Bre Jordan"
+date: "2025-12-17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(dplyr)
+library(ordinal)
+library(descr)
+library(ggplot2)
+```
+
+
+#CLEANING + ORGANIZING DATA
+###Pulling data
+Duplicate responses were removed in qualtrics as they were all blank forms, likely resulting from students
+
+```{r}
+myData<- read.csv("~/Documents/R Folder/QAC307+Project_December+17,+2025_10.07.csv", na.strings = c("", "NA"))
+```
+
+###Cleaning data
+I filtered the data to remove data with no responses. Since the question order was randomized, I did this by verifiying that there was no response in the first section, as observations with no responses in the first section were blank in all other sections as well. 
+
+```{r}
+myData <- myData[c(-1,-2), ]
+
+myData %>% 
+  select(-Introduction_DO, -Attention.Check_DO, -Status, -Duration..in.seconds., -ResponseId, -DistributionChannel, -RecordedDate, -UserLanguage, -Q_DuplicateRespondent) ->myData
+
+myData %>% 
+  filter(if_any(c(Intentions_1, Intentions_2, Intentions_3, Intentions_4, Intentions_5, Intentions_6, Intentions_7),
+                ~ !is.na(.)))->myData
+```
+
+
+###Renaming Variables
+A separate group data project I was working on concurrently uses a package regularly creates issues with dplyr by overwriting which is why it's specifically called each time. 
+```{r}
+myData %>% 
+  dplyr::rename(Petition_Month=Intentions_1,
+       Petition_Easy=Intentions_2, 
+       Petition_Hard=Intentions_3, 
+       Donate_7days=Intentions_4, 
+       Donate_Easy=Intentions_5, 
+       Donate_Hard=Intentions_6, 
+       Help_Others=Intentions_7) -> myData
+
+myData %>% 
+  dplyr::rename(OneSign_Helps=Beliefs_1,
+                Signing_Easy=Beliefs_2, 
+                Signing_Important=Beliefs_3, 
+                OneDonate_Helps=Beliefs_4, 
+                Donating_Easy=Beliefs_5, 
+                Donating_Important=Beliefs_6, 
+                Change_Large=Beliefs_7, 
+                Change_Small=Beliefs_8) -> myData
+
+myData$Q21[myData$Q21_6_TEXT=="2027 on medical leave"]<-"2027"
+myData$Q21[myData$Q21 %in% c("Grad", "Other")] <- "Grad/Other"
+
+myData %>% 
+  dplyr::rename(Gender=Q22, 
+                Year=Q21) -> myData
+
+myData$Q19_1 <- factor(myData$Q19_1, levels = c("2", "3", "4", "5"), ordered=TRUE)
+```
+
+##Cleaning Variables
+
+```{r}
+#Intentions
+myData$Petition_Month <- as.numeric(myData$Petition_Month)
+myData$Petition_Easy  <- as.numeric(myData$Petition_Easy)
+myData$Petition_Hard  <- as.numeric(myData$Petition_Hard)
+myData$Donate_7days   <- as.numeric(myData$Donate_7days)
+myData$Donate_Easy    <- as.numeric(myData$Donate_Easy)
+myData$Donate_Hard    <- as.numeric(myData$Donate_Hard)
+myData$Help_Others    <- as.numeric(myData$Help_Others)
+
+#Beliefs
+myData$OneSign_Helps       <- as.numeric(myData$OneSign_Helps)
+myData$Signing_Easy        <- as.numeric(myData$Signing_Easy)
+myData$Signing_Important   <- as.numeric(myData$Signing_Important)
+myData$OneDonate_Helps     <- as.numeric(myData$OneDonate_Helps)
+myData$Donating_Easy       <- as.numeric(myData$Donating_Easy)
+myData$Donating_Important  <- as.numeric(myData$Donating_Important)
+myData$Change_Large        <- as.numeric(myData$Change_Large)
+myData$Change_Small        <- as.numeric(myData$Change_Small)
+
+```
+
+
+###Building Composites
+
+```{r}
+#Petition Composite Intentions
+myData <- myData %>%
+  mutate(
+    Petition_Composite = case_when(
+      !is.na(Petition_Month) & !is.na(Petition_Easy) & !is.na(Petition_Hard) ~ 
+        (Petition_Month + Petition_Easy + Petition_Hard) / 3,
+      !is.na(Petition_Month) & !is.na(Petition_Easy) ~ 
+        (Petition_Month + Petition_Easy) / 2,
+      !is.na(Petition_Month) & !is.na(Petition_Hard) ~ 
+        (Petition_Month + Petition_Hard) / 2,
+      !is.na(Petition_Easy) & !is.na(Petition_Hard) ~ 
+        (Petition_Easy + Petition_Hard) / 2))
+
+#Donation Composite Intentions
+myData <- myData %>%
+  mutate(
+    Donation_Composite = case_when(
+      !is.na(Donate_7days) & !is.na(Donate_Easy) & !is.na(Donate_Hard) ~ 
+        (Donate_7days + Donate_Easy + Donate_Hard) / 3,
+      !is.na(Donate_7days) & !is.na(Donate_Easy) ~ 
+        (Donate_7days + Donate_Easy) / 2,
+      !is.na(Donate_7days) & !is.na(Donate_Hard) ~ 
+        (Donate_7days + Donate_Hard) / 2,
+      !is.na(Donate_Easy) & !is.na(Donate_Hard) ~ 
+        (Donate_Easy + Donate_Hard) / 2))
+
+#Petition Belief Composite
+myData <- myData %>%
+  mutate(
+    Petition_Belief_Composite = case_when(
+      !is.na(OneSign_Helps) & !is.na(Signing_Easy) & !is.na(Signing_Important) ~
+        (OneSign_Helps + Signing_Easy + Signing_Important) / 3,
+      !is.na(OneSign_Helps) & !is.na(Signing_Easy) ~
+        (OneSign_Helps + Signing_Easy) / 2,
+      !is.na(OneSign_Helps) & !is.na(Signing_Important) ~
+        (OneSign_Helps + Signing_Important) / 2,
+      !is.na(Signing_Easy) & !is.na(Signing_Important) ~
+        (Signing_Easy + Signing_Important) / 2))
+
+#Donation Belief Composite
+myData <- myData %>%
+  mutate(
+    Donation_Belief_Composite = case_when(
+      !is.na(OneDonate_Helps) & !is.na(Donating_Easy) & !is.na(Donating_Important) ~
+        (OneDonate_Helps + Donating_Easy + Donating_Important) / 3,
+      !is.na(OneDonate_Helps) & !is.na(Donating_Easy) ~
+        (OneDonate_Helps + Donating_Easy) / 2,
+      !is.na(OneDonate_Helps) & !is.na(Donating_Important) ~
+        (OneDonate_Helps + Donating_Important) / 2,
+      !is.na(Donating_Easy) & !is.na(Donating_Important) ~
+        (Donating_Easy + Donating_Important) / 2))
+
+```
+
+###Manipulating Vignettes_DO
+```{r}
+
+#shortening Vignettes_DO
+myData$Vignettes[myData$Vignettes_DO=="Instructions|Petitions - Sustain"]<-"Petition - Sustain"
+myData$Vignettes[myData$Vignettes_DO=="Instructions|Petitions - Change"]<-"Petition - Change"
+myData$Vignettes[myData$Vignettes_DO=="Instructions|Donations - Sustain"]<-"Donation - Sustain"
+myData$Vignettes[myData$Vignettes_DO=="Instructions|Donations - Change"]<-"Donation - Change"
+
+#factoring + releveling for analysis
+myData$Vignettes<-factor(myData$Vignettes, 
+                         levels=c("Petition - Change", "Donation - Change", 
+                                  "Petition - Sustain", "Donation - Sustain"),
+                         ordered=F)
+
+#collapsing by talk type
+myData$Type[myData$Vignettes %in% c("Petition - Change", "Donation - Change")] <- "Change"
+myData$Type[myData$Vignettes %in% c("Petition - Sustain", "Donation - Sustain")] <- "Sustain"
+
+#collapsing by action mode
+myData$Mode[myData$Vignettes %in% c("Petition - Change", "Petition - Sustain")] <- "Petition"
+myData$Mode[myData$Vignettes %in% c("Donation - Change", "Donation - Sustain")] <- "Donation"
+
+```
+
+###Creating Subsets
+```{r}
+myData %>% 
+  filter(Vignettes_DO %in% c("Instructions|Petitions - Sustain", "Instructions|Petitions - Change"))->myData_Petition
+
+myData %>% 
+  filter(Vignettes_DO %in% c("Instructions|Donations - Sustain", "Instructions|Donations - Change"))->myData_Donation
+
+```
+
+#FREQ TABLES
+
+```{r}
+freq(myData$Vignettes)
+freq(myData$Type)
+freq(myData$Mode)
+
+freq(myData$Petition_Month)
+freq(myData$Petition_Easy)
+freq(myData$Petition_Hard)
+
+freq(myData$Donate_7days)
+freq(myData$Donate_Easy)
+freq(myData$Donate_Hard)
+
+freq(myData$Help_Others)
+
+freq(myData$OneSign_Helps)
+freq(myData$Signing_Easy)
+freq(myData$Signing_Important)
+
+freq(myData$OneDonate_Helps)
+freq(myData$Donating_Easy)
+freq(myData$Donating_Important)
+
+freq(myData$Change_Large)
+freq(myData$Change_Small)
+
+freq(myData$Petition_Composite)
+freq(myData$Donation_Composite)
+
+freq(myData$Petition_Belief_Composite)
+freq(myData$Donation_Belief_Composite)
+
+#covariate for ANCOVAs
+freq(myData$Q19_1)  
+
+#demographics
+freq(myData$Year)    
+freq(myData$Gender) 
+
+# used in paper
+freq(myData$Attention.Check) 
+
+```
+
+
+#GRAPHS
+```{r}
+
+ggplot(myData)+
+  geom_boxplot(aes(x = Type, y = Petition_Composite, fill = Type), alpha = 0.5) +
+  facet_grid(.~ Mode) +
+  scale_fill_manual(values = c("Sustain" = "gold3","Change"  = "darkslategray3"))+
+  xlab("Vignette Type") +
+  ylab("Petition Intention Composite Score")+
+  ggtitle("Petition Intention according to Vignette Type and Mode")
+
+
+ggplot(myData)+
+  geom_boxplot(aes(x = Type, y = Donation_Composite, fill = Type), alpha = 0.5) +
+  facet_grid(.~ Mode) +
+  scale_fill_manual(values = c("Sustain" = "gold3","Change"  = "darkslategray3"))+
+  xlab("Vignette Type") +
+  ylab("Donation Intention Composite Score")+
+  ggtitle("Donation Intention according to Vignette Type and Mode")
+
+
+ggplot(myData)+
+  geom_boxplot(aes(x = Type, y = Petition_Belief_Composite, fill = Type), alpha = 0.5) +
+  facet_grid(.~ Mode) +
+  scale_fill_manual(values = c("Sustain" = "gold3","Change"  = "darkslategray3"))+
+  xlab("Vignette Type") +
+  ylab("Petition Belief Composite Score")+
+  ggtitle("Petition Belief according to Vignette Type and Mode")
+
+
+ggplot(myData)+
+  geom_boxplot(aes(x = Type, y = Donation_Belief_Composite, fill = Type), alpha = 0.5) +
+  facet_grid(.~ Mode) +
+  scale_fill_manual(values = c("Sustain" = "gold3","Change"  = "darkslategray3"))+
+  xlab("Vignette Type") +
+  ylab("Donation Belief Composite Score")+
+  ggtitle("Donation Belief according to Vignette Type and Mode")
+
+```
+
+#ANALYSIS
+### Base Analysis of Composites and Vignettes
+```{r}
+tapply(myData$Petition_Composite, myData$Vignettes, mean, na.rm = TRUE)
+model1 <- aov(Petition_Composite~Vignettes, data=myData)
+summary(model1)
+plot(model1)
+
+tapply(myData$Donation_Composite, myData$Vignettes, mean, na.rm = TRUE)
+model2 <- aov(Donation_Composite~Vignettes, data=myData)
+summary(model2)
+plot(model2)
+
+```
+
+#ANCOVA
+```{r}
+model3 <- aov(Petition_Composite~Vignettes+Q19_1, data=myData)
+summary(model3)
+plot(model3)
+
+model4 <- aov(Donation_Composite~Vignettes+Q19_1, data=myData)
+summary(model4)
+plot(model4)
+
+```
+
+##Analysis of Beliefs
+```{r}
+tapply(myData$Petition_Belief_Composite, myData$Vignettes, mean, na.rm = TRUE)
+model5 <- aov(Petition_Belief_Composite~Vignettes+Q19_1, data=myData)
+summary(model5)
+plot(model5)
+
+tapply(myData$Donation_Belief_Composite, myData$Vignettes, mean, na.rm = TRUE)
+model6 <- aov(Donation_Belief_Composite~Vignettes+Q19_1, data=myData)
+summary(model6)
+plot(model6)
+
+
+```
+
+
+##Analysis of Petition and Donation by Type
+```{r}
+
+model7 <- aov(Petition_Composite~Type+Q19_1, data=myData)
+summary(model7)
+plot(model7)
+
+model8 <- aov(Donation_Composite~Type, data=myData)
+summary(model8)
+plot(model8)
+
+```
+
+
+#Order Effects
+```{r}
+used_rows <- as.numeric(rownames(model1$model))
+graphdata<- data.frame(EndDate = myData$EndDate[used_rows], 
+                       Residuals = model1$residuals)
+graphdata$EndDate<-as.Date(graphdata$EndDate)
+
+ggplot(data=graphdata)+
+  geom_point(aes(x=EndDate, y=Residuals))+
+  geom_smooth(aes(x=EndDate, y=Residuals), method="lm")+
+  ylab("Residuals")+
+  xlab("End Date")+
+  ggtitle("Examining Order Effects")
+
+```
+
+#Exploratory
+```{r}
+model9 <- aov(Petition_Composite~Vignettes+Q19_1+Gender+Year, data=myData_Donation)
+summary(model9)
+plot(model9)
+
+model10 <- aov(Donation_Composite~Vignettes+Q19_1+Gender+Year, data=myData_Petition)
+summary(model10)
+plot(model10)
+```
+
+#additional materials
+
+```{r}
+
+myData$Q19_1.1<-as.numeric(as.character(myData$Q19_1))
+
+ggplot(data=myData)+
+ geom_histogram(aes(x=Petition_Composite), fill="darkslategray3", bins = 7, alpha = 0.5)+
+ ggtitle("Respondent Intentions to Sign Petitions")+
+  xlab("Petition Intention Composite Score")
+
+summary(myData_Petition$Petition_Composite) 
+mean(myData_Petition$Petition_Composite, na.rm=T) 
+sd(myData_Petition$Petition_Composite, na.rm=T) 
+
+summary(myData$Petition_Composite) 
+mean(myData$Petition_Composite, na.rm=T) 
+sd(myData$Petition_Composite, na.rm=T) 
+
+
+ggplot(data=myData_Petition)+
+  geom_jitter(aes(x=Q19_1.1, y=Petition_Composite, color=Type))+
+  geom_smooth(aes(x=Q19_1.1, y=Petition_Composite, fill=Type), color="black", method="lm")+
+  scale_fill_manual(values = c("Sustain" = "gold3","Change"  = "darkslategray3"))+
+  scale_color_manual(values = c("Sustain" = "gold3","Change"  = "darkslategray3"))+
+  facet_grid(. ~ Type)+
+  xlab("Vignette Type") +
+  ylab("Petition Intention Composite Score")+
+  ggtitle("Petition Intention according to Vignette Type for those shown Petition Vignettes")
+
+
+ggplot(myData)+
+  geom_boxplot(aes(x = Type, y = Petition_Composite, fill = Type), alpha = 0.5) +
+  facet_grid(.~ Mode) +
+  scale_fill_manual(values = c("Sustain" = "gold3","Change"  = "darkslategray3"))+
+  xlab("Vignette Type") +
+  ylab("Donation Intention Composite Score")+
+  ggtitle("Donation Intention according to Vignette Type and Mode")
+
+
+
+```
+
